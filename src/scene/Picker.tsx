@@ -19,7 +19,7 @@ export function Picker({ model, timeline }: { model: WarehouseModel; timeline: T
   const groupRef = useRef<Group>(null);
   const clock = useRef(0); // simulated seconds since replay start
   const sinceUpdate = useRef(0);
-  const [orderIdx, setOrderIdx] = useState(0);
+  const [tripIdx, setTripIdx] = useState(0);
 
   const replayId = useStore((s) => s.replayId);
   const setLive = useStore((s) => s.setLive);
@@ -27,7 +27,7 @@ export function Picker({ model, timeline }: { model: WarehouseModel; timeline: T
   // Restart the clock when the replay restarts or the timeline changes.
   useEffect(() => {
     clock.current = 0;
-    setOrderIdx(0);
+    setTripIdx(0);
   }, [replayId, timeline]);
 
   useFrame((_, delta) => {
@@ -42,32 +42,32 @@ export function Picker({ model, timeline }: { model: WarehouseModel; timeline: T
     const finished = playing && clock.current >= timeline.duration;
     if (sinceUpdate.current >= COUNTER_UPDATE_S || finished) {
       sinceUpdate.current = 0;
-      setLive({ distance: s.distance, elapsed: clock.current, ordersDone: s.ordersDone, orderIdx: s.orderIdx });
-      if (s.orderIdx !== orderIdx) setOrderIdx(s.orderIdx);
+      setLive({ distance: s.distance, elapsed: clock.current, ordersDone: s.ordersDone, tripIdx: s.tripIdx });
+      if (s.tripIdx !== tripIdx) setTripIdx(s.tripIdx);
     }
     if (finished) setPlaying(false);
   });
 
-  // Route of the current order: every walk segment joined into one line.
+  // Route of the current trip: every walk segment joined into one line.
   const routePoints = useMemo(() => {
     const pts: [number, number, number][] = [];
     for (const step of timeline.steps) {
-      if (step.orderIdx !== orderIdx || step.kind !== 'walk') continue;
+      if (step.tripIdx !== tripIdx || step.kind !== 'walk') continue;
       for (const c of step.path) {
         const [x, z] = toWorld(grid, c.x, c.y);
         pts.push([x, 0.06, z]);
       }
     }
     return pts;
-  }, [timeline, orderIdx, grid]);
+  }, [timeline, tripIdx, grid]);
 
-  const stops = timeline.stopsByOrder[orderIdx]?.slice(1, -1) ?? [];
+  const stops = timeline.stopsByTrip[tripIdx]?.slice(1, -1) ?? [];
 
   return (
     <group>
       {routePoints.length > 1 && <Line points={routePoints} color="#4cc9f0" lineWidth={2} transparent opacity={0.7} />}
 
-      {/* Pick points of the current order */}
+      {/* Pick points of the current trip */}
       {stops.map((node) => {
         const [x, z] = toWorld(grid, grid.nodes[node].x, grid.nodes[node].y);
         return (

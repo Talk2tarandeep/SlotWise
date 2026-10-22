@@ -1,5 +1,6 @@
 // Turns a few orders into a timed sequence of steps for the 3D replay:
-// walk (along the BFS path) -> pick (10 s per line) -> ... -> walk -> pack (30 s).
+// walk (along the BFS path) -> pick (10 s per line) -> ... -> walk -> pack.
+// Orders are grouped into trips (1 order per trip, or a batch of orders).
 //
 // It uses exactly the same routing and timing as scoring.ts, so the animated
 // counters always agree with the computed score for those orders.
@@ -8,13 +9,13 @@ import { PACK_SECONDS_PER_ORDER, PICK_SECONDS_PER_LINE, WALK_SPEED_MPS } from '.
 import type { Cell } from './grid';
 import { slotOfProduct, type Layout } from './layouts';
 import { pathBetweenNodes, type WarehouseModel } from './model';
-import { routeForOrder } from './scoring';
+import { groupIntoTrips, routeForTrip } from './scoring';
 import type { Order } from './types';
 
 type StepBase = {
   start: number; // seconds since the replay started
   duration: number; // seconds
-  orderIdx: number; // index into timeline.orders
+  tripIdx: number; // index into timeline.trips
   distanceBefore: number; // metres walked before this step began
   ordersDoneBefore: number; // orders packed before this step began
 };
@@ -22,31 +23,34 @@ type StepBase = {
 export type Step =
   | (StepBase & { kind: 'walk'; path: Cell[]; distance: number })
   | (StepBase & { kind: 'pick'; node: number; lines: number })
-  | (StepBase & { kind: 'pack'; node: number });
+  | (StepBase & { kind: 'pack'; node: number; orders: number });
 
 export type Timeline = {
   orders: Order[];
+  trips: Order[][];
   steps: Step[];
-  stopsByOrder: number[][]; // route stops (nodes) for each order
+  stopsByTrip: number[][]; // route stops (nodes) for each trip
   duration: number; // total seconds
   totalDistance: number; // total metres
 };
 
-export function buildTimeline(model: WarehouseModel, layout: Layout, orders: Order[]): Timeline {
+export function buildTimeline(model: WarehouseModel, layout: Layout, orders: Order[], batchSize = 1): Timeline {
   const slotOf = slotOfProduct(layout);
+  const trips = groupIntoTrips(orders, batchSize);
   const steps: Step[] = [];
-  const stopsByOrder: number[][] = [];
+  const stopsByTrip: number[][] = [];
   let t = 0;
   let walked = 0;
+  let ordersDone = 0;
 
-  orders.forEach((order, orderIdx) => {
-    const route = routeForOrder(model, slotOf, order);
-    stopsByOrder.push(route.stops);
-    const base = () => ({ start: t, orderIdx, distanceBefore: walked, ordersDoneBefore: orderIdx });
+  trips.forEach((trip, tripIdx) => {
+    const route = routeForTrip(model, slotOf, trip);
+    stopsByTrip.push(route.stops);
+    const base = () => ({ start: t, tripIdx, distanceBefore: walked, ordersDoneBefore: ordersDone });
 
-    // How many lines are picked at each pick point of this order.
+    // How many lines (of all orders in the trip) are picked at each pick point.
     const linesAt = new Map<number, number>();
-    for (const code of order.items) {
+    for (const code of trip.flatMap((o) => o.items)) {
       const node = model.grid.slots[slotOf.get(code)!].node;
       linesAt.set(node, (linesAt.get(node) ?? 0) + 1);
     }
@@ -63,17 +67,20 @@ export function buildTimeline(model: WarehouseModel, layout: Layout, orders: Ord
       }
       const isLast = i === route.stops.length - 1;
       if (isLast) {
-        steps.push({ ...base(), kind: 'pack', duration: PACK_SECONDS_PER_ORDER, node: to });
-        t += PACK_SECONDS_PER_ORDER;
+        // Back at the dock: pack every order of the trip.
+        const duration = trip.length * PACK_SECONDS_PER_ORDER;
+        steps.push({ ...base(), kind: 'pack', duration, node: to, orders: trip.length });
+        t += duration;
       } else {
         const lines = linesAt.get(to)!;
         steps.push({ ...base(), kind: 'pick', duration: lines * PICK_SECONDS_PER_LINE, node: to, lines });
         t += lines * PICK_SECONDS_PER_LINE;
       }
     }
+    ordersDone += trip.length;
   });
 
-  return { orders, steps, stopsByOrder, duration: t, totalDistance: walked };
+  return { orders, trips, steps, stopsByTrip, duration: t, totalDistance: walked };
 }
 
 export type ReplayState = {
@@ -81,16 +88,16 @@ export type ReplayState = {
   y: number;
   distance: number; // metres walked so far
   ordersDone: number;
-  orderIdx: number; // order currently being worked on
+  tripIdx: number; // trip currently being worked on
   kind: Step['kind'] | 'done';
 };
 
 // Where is the picker, and what are the counters, at time t?
 export function sampleTimeline(model: WarehouseModel, tl: Timeline, t: number): ReplayState {
   const dock = model.grid.nodes[0];
-  if (tl.steps.length === 0) return { x: dock.x, y: dock.y, distance: 0, ordersDone: 0, orderIdx: 0, kind: 'done' };
+  if (tl.steps.length === 0) return { x: dock.x, y: dock.y, distance: 0, ordersDone: 0, tripIdx: 0, kind: 'done' };
   if (t >= tl.duration) {
-    return { x: dock.x, y: dock.y, distance: tl.totalDistance, ordersDone: tl.orders.length, orderIdx: tl.orders.length - 1, kind: 'done' };
+    return { x: dock.x, y: dock.y, distance: tl.totalDistance, ordersDone: tl.orders.length, tripIdx: tl.trips.length - 1, kind: 'done' };
   }
 
   // Binary search for the last step that started at or before t.
@@ -103,7 +110,7 @@ export function sampleTimeline(model: WarehouseModel, tl: Timeline, t: number): 
   }
   const step = tl.steps[lo];
   const f = Math.min(1, Math.max(0, (t - step.start) / step.duration)); // 0..1 progress in this step
-  const common = { ordersDone: step.ordersDoneBefore, orderIdx: step.orderIdx, kind: step.kind };
+  const common = { ordersDone: step.ordersDoneBefore, tripIdx: step.tripIdx, kind: step.kind };
 
   if (step.kind === 'walk') {
     // Move along the path: each path segment is 1 cell = 1 m.

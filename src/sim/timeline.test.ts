@@ -27,6 +27,15 @@ describe('replay timeline', () => {
     expect({ x: end.x, y: end.y }).toEqual(model.grid.nodes[0]);
   });
 
+  it('batch replay (4 orders per trip) also matches the scoring engine', () => {
+    const batched = buildTimeline(model, layout, sample, 4);
+    const batchScore = scoreLayout(model, layout, sample, 4);
+    expect(batched.trips.length).toBe(5);
+    expect(batched.totalDistance).toBe(batchScore.totalDistanceM);
+    expect(batched.duration).toBeCloseTo(batchScore.totalTimeS, 6);
+    expect(sampleTimeline(model, batched, batched.duration).ordersDone).toBe(20);
+  });
+
   it('distance walked never decreases over time', () => {
     let last = 0;
     for (let t = 0; t < tl.duration; t += 7) {

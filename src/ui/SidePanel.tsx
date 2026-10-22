@@ -25,7 +25,7 @@ export function SidePanel() {
   const timeline = useTimeline();
 
   const sampleEnd = Math.min(data.orders.length, sampleStart + SAMPLE_SIZE);
-  const current = timeline?.orders[live.orderIdx];
+  const trip = timeline?.trips[live.tripIdx];
 
   return (
     <aside className="panel">
@@ -94,9 +94,11 @@ export function SidePanel() {
             <span className="unit">orders done</span>
           </div>
         </div>
-        {current && (
+        {trip && (
           <p className="muted">
-            Current order #{current.id} · {current.items.length} lines · {current.t.replace('T', ' ')}
+            {trip.length === 1
+              ? `Current order #${trip[0].id} · ${trip[0].items.length} lines · ${trip[0].t.replace('T', ' ')}`
+              : `Current trip: ${trip.length} orders (#${trip.map((o) => o.id).join(', #')}) · ${trip.reduce((n, o) => n + o.items.length, 0)} lines`}
           </p>
         )}
         {timeline && (

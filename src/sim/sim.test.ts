@@ -144,3 +144,31 @@ describe('swap game', () => {
     expect(moved.filter((c) => c !== null).length).toBe(100);
   });
 });
+
+describe('batch picking', () => {
+  // Tiny warehouse from (c): node 1 = aisle 0 front, node 4 = aisle 1 back.
+  const tiny: FloorConfig = { aisles: 2, slotsPerFace: 2, aisleWidth: 1, rackDepth: 1, crossAisleWidth: 1, dock: { x: 0, y: 0 } };
+  const m = buildModel(tiny);
+  const products: Product[] = ['A', 'B'].map((code, i) => ({ code, desc: '', picks: 1, rank: i + 1 }));
+  const layout = swapSlots(originalLayout(products, 8), 1, 7); // A at node 1, B at node 4
+  const orders = [
+    { id: '1', t: '', items: ['A'] },
+    { id: '2', t: '', items: ['B'] },
+  ];
+
+  it('batch size 1 is exactly single-order picking', () => {
+    // Order 1: dock->1->dock = 4 m. Order 2: dock->4->dock = 12 m.
+    const s = scoreLayout(m, layout, orders, 1);
+    expect(s.trips).toBe(2);
+    expect(s.totalDistanceM).toBe(16);
+  });
+
+  it('a batch of 2 walks one combined trip, packs both orders', () => {
+    // dock->1 (2) ->4 (6) ->dock (6) = 14 m in one trip.
+    const s = scoreLayout(m, layout, orders, 2);
+    expect(s.trips).toBe(1);
+    expect(s.totalDistanceM).toBe(14);
+    // 14 m walk + 2 lines x 10 s + 2 orders x 30 s, averaged over 2 orders
+    expect(s.avgPickTimeS).toBeCloseTo((14 / 1.2 + 20 + 60) / 2, 6);
+  });
+});

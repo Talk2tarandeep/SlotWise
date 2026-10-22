@@ -51,7 +51,7 @@ export function Leaderboard() {
   return (
     <section>
       <h2>Local leaderboard</h2>
-      <p className="muted">Saved in this browser only. Scores are recomputed from all {data.orders.length.toLocaleString()} orders.</p>
+      <p className="muted">Saved in this browser only. Ranked by single-order picking, recomputed from all {data.orders.length.toLocaleString()} orders.</p>
 
       <div className="row">
         <input

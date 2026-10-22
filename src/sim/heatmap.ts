@@ -8,7 +8,7 @@
 import { DOCK_NODE } from './grid';
 import { slotOfProduct, type Layout } from './layouts';
 import { pathBetweenNodes, type WarehouseModel } from './model';
-import { routeForOrder } from './scoring';
+import { groupIntoTrips, routeForTrip } from './scoring';
 import type { Order } from './types';
 
 export type Heatmap = {
@@ -18,7 +18,7 @@ export type Heatmap = {
   maxCellPasses: number;
 };
 
-export function buildHeatmap(model: WarehouseModel, layout: Layout, orders: Order[]): Heatmap {
+export function buildHeatmap(model: WarehouseModel, layout: Layout, orders: Order[], batchSize = 1): Heatmap {
   const { grid } = model;
   const cellPasses = new Array<number>(grid.width * grid.height).fill(0);
   const stopsPerNode = new Array<number>(grid.nodes.length).fill(0);
@@ -39,8 +39,8 @@ export function buildHeatmap(model: WarehouseModel, layout: Layout, orders: Orde
     return cells;
   };
 
-  for (const order of orders) {
-    const { stops } = routeForOrder(model, slotOf, order);
+  for (const trip of groupIntoTrips(orders, batchSize)) {
+    const { stops } = routeForTrip(model, slotOf, trip);
     for (let i = 1; i < stops.length; i++) {
       for (const cell of legCells(stops[i - 1], stops[i])) cellPasses[cell]++;
       if (stops[i] !== DOCK_NODE) stopsPerNode[stops[i]]++;

@@ -32,3 +32,6 @@ export const FLOOR: FloorConfig = {
 export const WALK_SPEED_MPS = 1.2; // metres per second
 export const PICK_SECONDS_PER_LINE = 10; // time to pick one order line at the slot
 export const PACK_SECONDS_PER_ORDER = 30; // packing time at the dock, once per order
+
+// Batch picking: one trip collects this many consecutive orders.
+export const BATCH_SIZE = 4;

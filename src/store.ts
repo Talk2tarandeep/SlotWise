@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { baselineLayout, originalLayout, swapSlots, type Layout } from './sim/layouts';
 import { buildModel, type WarehouseModel } from './sim/model';
+import { BATCH_SIZE } from './sim/config';
 import { scoreLayout, type Score } from './sim/scoring';
 import type { WarehouseData } from './sim/types';
 
@@ -18,13 +19,26 @@ export const LAYOUT_NAMES: Record<LayoutKey, string> = {
 export const SAMPLE_SIZE = 20; // orders shown in one animated replay
 export const SPEEDS = [1, 5, 20, 60];
 
-export type LiveCounters = { distance: number; elapsed: number; ordersDone: number; orderIdx: number };
+export type LiveCounters = { distance: number; elapsed: number; ordersDone: number; tripIdx: number };
+
+// Picking mode: one order per trip, or BATCH_SIZE orders per trip.
+export type PickingMode = 'single' | 'batch';
+export const batchSizeFor = (mode: PickingMode) => (mode === 'batch' ? BATCH_SIZE : 1);
+
+type LayoutScores = Record<LayoutKey, Score>;
+
+// Score one layout in both picking modes.
+function scoreBoth(model: WarehouseModel, layout: Layout, orders: WarehouseData['orders']) {
+  return { single: scoreLayout(model, layout, orders, 1), batch: scoreLayout(model, layout, orders, BATCH_SIZE) };
+}
 
 type State = {
   data: WarehouseData | null;
   model: WarehouseModel | null;
   layouts: Record<LayoutKey, Layout>;
-  scores: Record<LayoutKey, Score> | null; // all orders of the month, per layout
+  scores: LayoutScores | null; // all orders of the month, single-order picking
+  batchScores: LayoutScores | null; // same, batch picking
+  mode: PickingMode;
   active: LayoutKey;
 
   sampleStart: number; // index of the first order in the replay sample
@@ -42,6 +56,7 @@ type State = {
   init: (data: WarehouseData) => void;
   setActive: (key: LayoutKey) => void;
   setSpeed: (speed: number) => void;
+  setMode: (mode: PickingMode) => void;
   setPlaying: (playing: boolean) => void;
   replay: () => void;
   setSampleStart: (index: number) => void;
@@ -54,13 +69,15 @@ type State = {
   loadPlayerLayout: (layout: Layout) => void;
 };
 
-const ZERO: LiveCounters = { distance: 0, elapsed: 0, ordersDone: 0, orderIdx: 0 };
+const ZERO: LiveCounters = { distance: 0, elapsed: 0, ordersDone: 0, tripIdx: 0 };
 
 export const useStore = create<State>((set, get) => ({
   data: null,
   model: null,
   layouts: { original: [], baseline: [], player: [] },
   scores: null,
+  batchScores: null,
+  mode: 'single',
   active: 'original',
   sampleStart: 0,
   speed: 20,
@@ -77,21 +94,21 @@ export const useStore = create<State>((set, get) => ({
     const model = buildModel();
     const original = originalLayout(data.products, model.grid.slots.length);
     const baseline = baselineLayout(data.products, model);
-    const originalScore = scoreLayout(model, original, data.orders);
+    const o = scoreBoth(model, original, data.orders);
+    const b = scoreBoth(model, baseline, data.orders);
     set({
       data,
       model,
       layouts: { original, baseline, player: [...original] },
-      scores: {
-        original: originalScore,
-        baseline: scoreLayout(model, baseline, data.orders),
-        player: originalScore, // My layout starts as a copy of Original
-      },
+      // My layout starts as a copy of Original, so it starts with the same scores.
+      scores: { original: o.single, baseline: b.single, player: o.single },
+      batchScores: { original: o.batch, baseline: b.batch, player: o.batch },
     });
   },
   // Changing layout or sample restarts the replay (paused) so runs are comparable.
   setActive: (active) => set({ active, selected: null, playing: false, replayId: get().replayId + 1, live: ZERO }),
   setSpeed: (speed) => set({ speed }),
+  setMode: (mode) => set({ mode, playing: false, replayId: get().replayId + 1, live: ZERO }),
   setPlaying: (playing) => set({ playing }),
   replay: () => set({ playing: true, replayId: get().replayId + 1, live: ZERO }),
   setSampleStart: (index) => {
@@ -105,19 +122,20 @@ export const useStore = create<State>((set, get) => ({
   // Swap game: first click selects a slot, second click swaps the two slots
   // and re-scores My layout on every order of the month.
   clickSlot: (slot) => {
-    const { active, selected, layouts, scores, model, data, swaps, replayId } = get();
-    if (active !== 'player' || !model || !data || !scores) return;
+    const { active, selected, layouts, scores, batchScores, model, data, swaps, replayId } = get();
+    if (active !== 'player' || !model || !data || !scores || !batchScores) return;
     if (selected === null) return set({ selected: slot });
     if (selected === slot) return set({ selected: null });
 
     const player = swapSlots(layouts.player, selected, slot);
-    const score = scoreLayout(model, player, data.orders);
+    const score = scoreBoth(model, player, data.orders);
     set({
       layouts: { ...layouts, player },
-      scores: { ...scores, player: score },
+      scores: { ...scores, player: score.single },
+      batchScores: { ...batchScores, player: score.batch },
       selected: null,
       swaps: swaps + 1,
-      lastSwapDeltaM: score.totalDistanceM - scores.player.totalDistanceM,
+      lastSwapDeltaM: score.single.totalDistanceM - scores.player.totalDistanceM, // single-order mode
       playing: false,
       replayId: replayId + 1,
       live: ZERO,
@@ -126,11 +144,13 @@ export const useStore = create<State>((set, get) => ({
   clearSelection: () => set({ selected: null }),
   // Load a saved layout (from the local leaderboard) into My layout and re-score it.
   loadPlayerLayout: (layout) => {
-    const { layouts, scores, model, data, replayId } = get();
-    if (!scores || !model || !data) return;
+    const { layouts, scores, batchScores, model, data, replayId } = get();
+    if (!scores || !batchScores || !model || !data) return;
+    const score = scoreBoth(model, layout, data.orders);
     set({
       layouts: { ...layouts, player: [...layout] },
-      scores: { ...scores, player: scoreLayout(model, layout, data.orders) },
+      scores: { ...scores, player: score.single },
+      batchScores: { ...batchScores, player: score.batch },
       active: 'player',
       selected: null,
       swaps: 0,
@@ -143,11 +163,12 @@ export const useStore = create<State>((set, get) => ({
   // Reset My layout to a copy of Original (default) or of the auto baseline,
   // so a player can also try to improve on the baseline directly.
   resetPlayer: (from = 'original') => {
-    const { layouts, scores, replayId } = get();
-    if (!scores) return;
+    const { layouts, scores, batchScores, replayId } = get();
+    if (!scores || !batchScores) return;
     set({
       layouts: { ...layouts, player: [...layouts[from]] },
       scores: { ...scores, player: scores[from] },
+      batchScores: { ...batchScores, player: batchScores[from] },
       selected: null,
       swaps: 0,
       lastSwapDeltaM: null,

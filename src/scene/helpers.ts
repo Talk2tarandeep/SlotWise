@@ -8,7 +8,7 @@ import type { Layout } from '../sim/layouts';
 import type { WarehouseModel } from '../sim/model';
 import type { Order } from '../sim/types';
 import { buildTimeline } from '../sim/timeline';
-import { SAMPLE_SIZE, useStore } from '../store';
+import { batchSizeFor, SAMPLE_SIZE, useStore } from '../store';
 
 // Grid cell (x, y) -> world position [X, Z] on the floor.
 // Grid y = 0 is the front cross-aisle, shown nearest the camera (+Z).
@@ -28,10 +28,11 @@ export function useTimeline() {
   const data = useStore((s) => s.data);
   const layout = useStore((s) => s.layouts[s.active]);
   const sampleStart = useStore((s) => s.sampleStart);
+  const batchSize = useStore((s) => batchSizeFor(s.mode));
   return useMemo(() => {
     if (!model || !data) return null;
-    return buildTimeline(model, layout, data.orders.slice(sampleStart, sampleStart + SAMPLE_SIZE));
-  }, [model, data, layout, sampleStart]);
+    return buildTimeline(model, layout, data.orders.slice(sampleStart, sampleStart + SAMPLE_SIZE), batchSize);
+  }, [model, data, layout, sampleStart, batchSize]);
 }
 
 // Traffic heatmap for the active layout over ALL orders, plus the Original
@@ -39,13 +40,16 @@ export function useTimeline() {
 // layouts can be compared by eye. Only computed while the overlay is on.
 // Layout arrays are never mutated (a swap makes a new array), so each
 // layout's heatmap is computed once and cached.
-const heatmapCache = new WeakMap<Layout, Heatmap>();
+// One cache per batch size (1 = single-order picking).
+const heatmapCache = new Map<number, WeakMap<Layout, Heatmap>>();
 
-function cachedHeatmap(model: WarehouseModel, layout: Layout, orders: Order[]): Heatmap {
-  let heat = heatmapCache.get(layout);
+function cachedHeatmap(model: WarehouseModel, layout: Layout, orders: Order[], batchSize: number): Heatmap {
+  if (!heatmapCache.has(batchSize)) heatmapCache.set(batchSize, new WeakMap());
+  const cache = heatmapCache.get(batchSize)!;
+  let heat = cache.get(layout);
   if (!heat) {
-    heat = buildHeatmap(model, layout, orders);
-    heatmapCache.set(layout, heat);
+    heat = buildHeatmap(model, layout, orders, batchSize);
+    cache.set(layout, heat);
   }
   return heat;
 }
@@ -56,10 +60,11 @@ export function useHeatmaps() {
   const show = useStore((s) => s.showHeatmap);
   const original = useStore((s) => s.layouts.original);
   const layout = useStore((s) => s.layouts[s.active]);
+  const batchSize = useStore((s) => batchSizeFor(s.mode));
   if (!show || !model || !data) return { current: null, reference: null };
   return {
-    current: cachedHeatmap(model, layout, data.orders),
-    reference: cachedHeatmap(model, original, data.orders),
+    current: cachedHeatmap(model, layout, data.orders, batchSize),
+    reference: cachedHeatmap(model, original, data.orders, batchSize),
   };
 }
 
