@@ -3,6 +3,7 @@
 
 import { useHeatmaps, useTimeline } from '../scene/helpers';
 import { LAYOUT_NAMES, SAMPLE_SIZE, SPEEDS, useStore, type LayoutKey } from '../store';
+import { Leaderboard } from './Leaderboard';
 import { ResultsCard } from './ResultsCard';
 
 function formatTime(seconds: number): string {
@@ -48,6 +49,7 @@ export function SidePanel() {
       </section>
 
       <ResultsCard />
+      <Leaderboard />
 
       <section>
         <h2>Replay</h2>

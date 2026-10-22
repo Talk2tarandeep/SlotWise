@@ -109,3 +109,10 @@ button.toggle.on { background: #24425a; border-color: var(--accent); color: #fff
 .bar { height: 8px; background: #1f2a3d; border-radius: 4px; overflow: hidden; }
 .bar > div { height: 100%; background: var(--accent); }
 .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Phase 5b: local leaderboard */
+input.text { flex: 1; min-width: 0; background: #0f1520; color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; font: inherit; font-size: 13px; }
+input.text:focus { outline: none; border-color: var(--accent); }
+.board td.actions { white-space: nowrap; }
+.board td:nth-child(2) { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.board th:nth-child(2) { text-align: left; }

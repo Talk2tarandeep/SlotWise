@@ -51,6 +51,7 @@ type State = {
   clickSlot: (slot: number) => void;
   clearSelection: () => void;
   resetPlayer: (from?: 'original' | 'baseline') => void;
+  loadPlayerLayout: (layout: Layout) => void;
 };
 
 const ZERO: LiveCounters = { distance: 0, elapsed: 0, ordersDone: 0, orderIdx: 0 };
@@ -123,6 +124,22 @@ export const useStore = create<State>((set, get) => ({
     });
   },
   clearSelection: () => set({ selected: null }),
+  // Load a saved layout (from the local leaderboard) into My layout and re-score it.
+  loadPlayerLayout: (layout) => {
+    const { layouts, scores, model, data, replayId } = get();
+    if (!scores || !model || !data) return;
+    set({
+      layouts: { ...layouts, player: [...layout] },
+      scores: { ...scores, player: scoreLayout(model, layout, data.orders) },
+      active: 'player',
+      selected: null,
+      swaps: 0,
+      lastSwapDeltaM: null,
+      playing: false,
+      replayId: replayId + 1,
+      live: ZERO,
+    });
+  },
   // Reset My layout to a copy of Original (default) or of the auto baseline,
   // so a player can also try to improve on the baseline directly.
   resetPlayer: (from = 'original') => {
