@@ -2,10 +2,10 @@
 // worked by N pickers at once, per layout. Numbers come from simulatePickers().
 
 import { congestionFor } from '../scene/helpers';
+import { InSampleNote } from './InSampleNote';
 import { pctChange } from '../sim/scoring';
-import { batchSizeFor, LAYOUT_NAMES, useStore, type LayoutKey } from '../store';
+import { batchSizeFor, LAYOUT_NAMES, LAYOUT_ORDER, useStore, type LayoutKey } from '../store';
 
-const ROWS: LayoutKey[] = ['original', 'baseline', 'player'];
 
 function hours(s: number) {
   return `${(s / 3600).toFixed(1)} h`;
@@ -21,10 +21,15 @@ export function CongestionCard() {
   if (pickers < 2) return null;
 
   const batchSize = batchSizeFor(mode);
+  // Optimized appears once the optimizer has finished.
+  const ROWS = LAYOUT_ORDER.filter((k) => layouts[k].length > 0);
   const results = Object.fromEntries(
     ROWS.map((key) => [key, congestionFor(model, layouts[key], data.orders, pickers, batchSize)]),
-  ) as Record<LayoutKey, ReturnType<typeof congestionFor>>;
-  const ref = results.original;
+  ) as Partial<Record<LayoutKey, ReturnType<typeof congestionFor>>>;
+  // Original, Auto baseline and My layout always exist.
+  const ref = results.original!;
+  const baselineRes = results.baseline!;
+  const playerRes = results.player!;
 
   return (
     <section>
@@ -42,7 +47,7 @@ export function CongestionCard() {
         </thead>
         <tbody>
           {ROWS.map((key) => {
-            const r = results[key];
+            const r = results[key]!;
             const d = pctChange(r.totalWaitS, ref.totalWaitS);
             return (
               <tr key={key} className={key === active ? 'active' : ''}>
@@ -64,11 +69,12 @@ export function CongestionCard() {
           })}
         </tbody>
       </table>
+      {layouts.optimized.length > 0 && <InSampleNote />}
       <p className="muted">
         All {ref.orders.toLocaleString()} orders, shared queue. A picker waits when the next aisle cell is occupied (cross-aisles never block).
         "Waiting" is time lost to congestion, summed over pickers; avg s/order includes it.
       </p>
-      {ref.forcedMoves + results.baseline.forcedMoves + results.player.forcedMoves > 0 && (
+      {ref.forcedMoves + baselineRes.forcedMoves + playerRes.forcedMoves > 0 && (
         <p className="muted bad">Deadlock safety valve fired; results include forced moves.</p>
       )}
     </section>

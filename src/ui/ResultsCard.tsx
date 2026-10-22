@@ -1,12 +1,11 @@
 // Results card: every order of the month replayed on each layout, in the
 // chosen picking mode. All numbers come from scoreLayout() in the sim engine.
 
-import { sameLayout } from '../leaderboard';
+import { isOwnLayout } from './evaluation';
+import { InSampleNote } from './InSampleNote';
 import { BATCH_SIZE } from '../sim/config';
 import { pctChange } from '../sim/scoring';
-import { LAYOUT_NAMES, useStore, type LayoutKey, type PickingMode } from '../store';
-
-const ROWS: LayoutKey[] = ['original', 'baseline', 'player'];
+import { LAYOUT_NAMES, LAYOUT_ORDER, useStore, type PickingMode } from '../store';
 
 function signedPct(value: number): string {
   if (Math.abs(value) < 0.05) return '0.0%';
@@ -24,15 +23,20 @@ export function ResultsCard() {
 
   const scores = mode === 'batch' ? batchScores : singleScores;
   // Effect of batching on the active layout (same layout, same orders).
-  const batchSaving = pctChange(batchScores[active].totalDistanceM, singleScores[active].totalDistanceM);
+  const activeSingle = singleScores[active];
+  const activeBatch = batchScores[active];
+  const batchSaving = activeSingle && activeBatch ? pctChange(activeBatch.totalDistanceM, activeSingle.totalDistanceM) : 0;
+  // Optimized appears once the optimizer has finished.
+  const ROWS = LAYOUT_ORDER.filter((k) => scores[k] !== undefined);
   const modes: [PickingMode, string][] = [
     ['single', 'Single order'],
     ['batch', `Batch of ${BATCH_SIZE}`],
   ];
 
   const original = scores.original;
-  // A win only counts once the player has actually changed the layout.
-  const changed = !sameLayout(layouts.player, layouts.original);
+  // A win only counts once the player has made the layout their own
+  // (not an untouched copy of Original, the baseline or the optimizer's layout).
+  const changed = isOwnLayout(layouts);
   const beatsBaseline = changed && scores.player.totalDistanceM < scores.baseline.totalDistanceM;
   const originalBeatsBaseline = scores.original.totalDistanceM < scores.baseline.totalDistanceM;
   const gapM = scores.player.totalDistanceM - scores.baseline.totalDistanceM;
@@ -58,7 +62,7 @@ export function ResultsCard() {
         </thead>
         <tbody>
           {ROWS.map((key) => {
-            const s = scores[key];
+            const s = scores[key]!;
             const d = pctChange(s.totalDistanceM, original.totalDistanceM);
             const rowClass = [key === active ? 'active' : '', key === 'player' && beatsBaseline ? 'win' : ''].join(' ');
             return (
@@ -72,6 +76,7 @@ export function ResultsCard() {
           })}
         </tbody>
       </table>
+      {scores.optimized && <InSampleNote />}
       <p className="muted">
         {mode === 'batch'
           ? `${original.trips.toLocaleString()} trips of up to ${BATCH_SIZE} consecutive orders. `

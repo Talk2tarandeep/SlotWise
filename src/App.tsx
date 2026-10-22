@@ -2,11 +2,19 @@ import { useEffect, useState } from 'react';
 import { WarehouseScene } from './scene/WarehouseScene';
 import type { WarehouseData } from './sim/types';
 import { useStore } from './store';
+import { DemoCaption, DemoDirector, startDemo, stopDemo } from './ui/DemoMode';
+import { Inspector } from './ui/Inspector';
+import { ReplayBar } from './ui/ReplayBar';
+import { SceneControls } from './ui/SceneControls';
 import { SidePanel } from './ui/SidePanel';
+import { Toasts } from './ui/Toasts';
 
 // Loads warehouse.json once, builds the sim model, then shows scene + panel.
+// The 3D view carries small overlays: controls (top right), demo caption and
+// toasts (top), the inspector (bottom left) and the replay bar (bottom).
 export default function App() {
   const ready = useStore((s) => s.model !== null);
+  const demoActive = useStore((s) => s.demo.active);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,6 +31,12 @@ export default function App() {
     <div className="app">
       <div className="scene">
         <WarehouseScene />
+        <SceneControls onDemo={() => (demoActive ? stopDemo() : startDemo())} />
+        <DemoCaption />
+        <Toasts />
+        <Inspector />
+        <ReplayBar />
+        <DemoDirector />
       </div>
       <SidePanel />
     </div>

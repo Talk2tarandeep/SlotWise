@@ -137,3 +137,125 @@ input.text:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0
   .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; min-height: 100%; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+/* =====================================================================
+   Digital twin UI: tabs, KPI cards, overlays on the 3D view
+   ===================================================================== */
+
+/* ---------- Panel header + tabs ---------- */
+.panel { padding: 0; gap: 0; }
+.panel-header { position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 16px 16px 0; border-bottom: 1px solid var(--line); }
+.panel-body { padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 14px; }
+.tabs { display: flex; gap: 2px; margin-top: 12px; }
+.tabs button { flex: 1; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); padding: 9px 4px; font-weight: 600; position: relative; }
+.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+.busy-dot { position: absolute; top: 7px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.2; } }
+
+.field { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 8px; margin-top: 8px; }
+.field label { font-size: 12px; color: var(--muted); }
+.segmented.wrap { flex-wrap: wrap; }
+.segmented.wrap button { flex: 1 1 45%; }
+
+/* ---------- KPI cards ---------- */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.kpi { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 8px 9px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-value.warn { color: var(--warn); }
+.kpi-label { font-size: 10.5px; color: var(--muted); line-height: 1.25; }
+.hint-dot { display: inline-grid; place-items: center; width: 12px; height: 12px; margin-left: 4px; border-radius: 50%; background: #e2e8f0; color: var(--muted); font-size: 9px; font-weight: 700; cursor: help; }
+
+/* ---------- Picker details + active orders ---------- */
+.picker-details { display: flex; flex-direction: column; gap: 6px; }
+.picker-head { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--chip, var(--accent)); flex: none; }
+.status { margin-left: auto; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #eef1f5; color: var(--muted); }
+.status-walking { background: var(--accent-soft); color: var(--accent); }
+.status-picking { background: var(--good-soft); color: var(--good); }
+.status-packing { background: #f3e8ff; color: #7c3aed; }
+.status-waiting { background: #fff7ed; color: var(--warn); }
+.progress { height: 6px; background: #eef1f5; border-radius: 3px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--chip, var(--accent)); transition: width 0.3s; }
+.order-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
+.order-id { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 3px; }
+.items { display: flex; flex-wrap: wrap; gap: 4px; }
+.item { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 2px 6px; border-radius: 5px; background: #f1f5f9; color: var(--muted); }
+.item.done { background: var(--good-soft); color: var(--good); }
+.item.next { background: var(--accent); color: #fff; }
+
+/* ---------- Events ---------- */
+.events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+.event { display: grid; grid-template-columns: 40px 10px 1fr; gap: 6px; align-items: start; line-height: 1.35; }
+.event-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.event .dot { margin-top: 3px; }
+.event.wait span:last-child { color: #9a3412; }
+.event.packed span:last-child { color: var(--good); }
+
+/* ---------- Tables, deltas, lists ---------- */
+.delta { font-size: 10.5px; font-weight: 600; }
+.sub { font-size: 10.5px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results.moves td { vertical-align: top; }
+.explain { margin: 10px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; }
+.tiny-note { font-size: 11px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+.muted-inline { color: var(--muted); font-size: 12px; }
+.spacer { flex: 1; }
+
+/* ---------- Game ---------- */
+.points { display: flex; align-items: baseline; gap: 8px; }
+.points-value { font-size: 28px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.challenges { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.challenges li { display: flex; gap: 10px; align-items: flex-start; cursor: help; }
+.challenges .check { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #eef1f5; color: var(--muted); font-size: 12px; flex: none; }
+.challenges li.done .check { background: var(--good); color: #fff; }
+.challenge-title { font-size: 13px; font-weight: 600; }
+.challenges li.done .challenge-title { color: var(--good); }
+
+/* ---------- What-if ---------- */
+.form-grid { display: grid; grid-template-columns: 100px 1fr; gap: 6px 10px; align-items: center; font-size: 12px; }
+.form-grid label { color: var(--muted); }
+select { font: inherit; font-size: 12px; color: var(--text); background: #fff; border: 1px solid var(--line-strong); border-radius: 7px; padding: 5px 6px; min-width: 0; }
+.scenario-list { display: flex; flex-direction: column; gap: 8px; }
+.scenario { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #f8fafc; }
+.scenario-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.scenario-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.metric { display: flex; flex-direction: column; min-width: 0; }
+.metric-value { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.metric-label { font-size: 10px; color: var(--muted); }
+.metric.best .metric-value { color: var(--good); }
+button.close { border: 0; background: none; padding: 0 2px; font-size: 16px; line-height: 1; color: var(--muted); }
+
+/* ---------- Overlays on the 3D view ---------- */
+.scene-controls { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; width: 270px; max-width: calc(100% - 24px); }
+.float-card { width: 100%; background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 12px; padding: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; }
+.float-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-left: 4px; }
+.demo-button { background: #111827; color: #fff; border-color: #111827; font-weight: 600; box-shadow: var(--shadow); }
+.demo-button:hover:not(:disabled) { color: #fff; background: #1f2937; }
+.demo-button.on { background: var(--warn); border-color: var(--warn); }
+.demo-caption { position: absolute; top: 12px; left: 12px; right: 296px; background: rgba(17, 24, 39, 0.9); color: #fff; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.45; box-shadow: var(--shadow); }
+.demo-step { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 999px; background: var(--warn); font-size: 11px; font-weight: 700; }
+.toasts { position: absolute; top: 70px; left: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.toast { background: #fff; border-left: 4px solid var(--chip, var(--good)); border-radius: 8px; padding: 6px 10px; font-size: 12px; box-shadow: var(--shadow); animation: toast-in 0.25s ease-out; max-width: 360px; }
+@keyframes toast-in { from { transform: translateY(-6px); opacity: 0; } }
+.inspector { position: absolute; left: 12px; bottom: 96px; width: 300px; max-width: calc(100% - 24px); background: rgba(255, 255, 255, 0.96); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); font-size: 12.5px; }
+.inspector p { margin: 4px 0 0; line-height: 1.4; }
+.inspector .close { position: absolute; top: 6px; right: 8px; }
+.inspector-title { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+.replay-bar { position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(255, 255, 255, 0.96); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; }
+.replay-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.replay-row.small { flex-wrap: wrap; }
+button.icon { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: 14px; flex: none; }
+button.icon.tiny { width: 24px; height: 24px; font-size: 14px; }
+.scrubber { flex: 1; min-width: 60px; accent-color: var(--accent); }
+.time { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.chip { padding: 3px 9px; font-size: 11px; font-weight: 700; border-radius: 999px; border: 1.5px solid var(--chip); color: var(--chip); background: #fff; }
+.chip.on, .chip:hover:not(:disabled) { background: var(--chip); color: #fff; border-color: var(--chip); }
+
+@media (max-width: 800px) {
+  .app { grid-template-rows: 72vh auto; }
+  .scene-controls { width: 220px; }
+  .demo-caption { right: 12px; top: auto; bottom: 100px; }
+  .inspector { bottom: 100px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+}

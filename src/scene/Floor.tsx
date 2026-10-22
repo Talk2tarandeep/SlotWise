@@ -5,7 +5,9 @@ import { Html } from '@react-three/drei';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { CanvasTexture, InstancedMesh, Object3D, RepeatWrapping, SRGBColorSpace } from 'three';
 import type { Grid } from '../sim/grid';
+import { useStore } from '../store';
 import { toWorld } from './helpers';
+import { PackingStation, STATION_TOP_Y } from './PackingStation';
 import { SCENE } from './theme';
 
 // Floor slab extends this far past the walkable grid (room for walls and the dock).
@@ -76,6 +78,9 @@ export function Floor({ grid }: { grid: Grid }) {
   const [dockX, dockZ] = toWorld(grid, cfg.dock.x, cfg.dock.y);
   const zoneW = 4;
   const zoneD = 3.5;
+  // Centre of the hatched zone; the packing table sits exactly here.
+  const zoneX = dockX + 1.2;
+  const zoneZ = dockZ + 0.9;
   const hazardTex = useMemo(() => makeHazardTexture(zoneW, zoneD), []);
 
   // Yellow lines on both edges of every aisle (12 thin strips, one draw call).
@@ -120,17 +125,15 @@ export function Floor({ grid }: { grid: Grid }) {
       </instancedMesh>
 
       {/* Hatched safety zone around the packing dock */}
-      <mesh rotation-x={-Math.PI / 2} position={[dockX + 1.2, 0.005, dockZ + 0.9]} receiveShadow raycast={() => null}>
+      <mesh rotation-x={-Math.PI / 2} position={[zoneX, 0.005, zoneZ]} receiveShadow raycast={() => null}>
         <planeGeometry args={[zoneW, zoneD]} />
         <meshStandardMaterial map={hazardTex} roughness={0.7} />
       </mesh>
 
-      {/* Packing table (replaced by a full workstation in a later step) */}
-      <mesh position={[dockX + 0.5, 0.45, dockZ + 1.3]} castShadow receiveShadow>
-        <boxGeometry args={[2.4, 0.9, 0.8]} />
-        <meshStandardMaterial color="#b08a5a" roughness={0.8} />
-      </mesh>
-      <Html position={[dockX + 0.5, 1.4, dockZ + 1.3]} center className="label">
+      {/* Packing workstation (steel bench + props): click to inspect the dock */}
+      <PackingStation position={[zoneX, 0, zoneZ]} onSelect={() => useStore.getState().setInspect({ kind: 'dock' })} />
+      {/* Label floats above the back edge of the bench so it never hides the props */}
+      <Html position={[zoneX, STATION_TOP_Y + 0.5, zoneZ - 0.5]} center className="label">
         PACKING DOCK
       </Html>
     </group>

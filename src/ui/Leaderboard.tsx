@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { loadEntries, sameLayout, saveEntries, type LeaderboardEntry } from '../leaderboard';
 import { pctChange, scoreLayout } from '../sim/scoring';
 import { useStore } from '../store';
+import { isOwnLayout } from './evaluation';
 
 export function Leaderboard() {
   const data = useStore((s) => s.data)!;
@@ -27,7 +28,8 @@ export function Leaderboard() {
     [entries, model, data.orders],
   );
 
-  const isUnchanged = sameLayout(layouts.player, layouts.original) || sameLayout(layouts.player, layouts.baseline);
+  // Untouched copies of Original, the baseline or the optimizer's layout can't be saved.
+  const isUnchanged = !isOwnLayout(layouts);
   const alreadySaved = entries.some((e) => sameLayout(e.layout, layouts.player));
 
   function persist(next: LeaderboardEntry[]) {
@@ -66,7 +68,7 @@ export function Leaderboard() {
           Save my layout
         </button>
       </div>
-      {isUnchanged && <p className="muted">Make at least one swap in My layout to save it.</p>}
+      {isUnchanged && <p className="muted">Make at least one swap of your own in My layout to save it.</p>}
       {alreadySaved && !isUnchanged && <p className="muted">This exact layout is already on the board.</p>}
       {message && <p className="muted bad">{message}</p>}
 

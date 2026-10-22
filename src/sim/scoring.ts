@@ -8,7 +8,7 @@
 import { PACK_SECONDS_PER_ORDER, PICK_SECONDS_PER_LINE, WALK_SPEED_MPS } from './config';
 import { slotOfProduct, type Layout } from './layouts';
 import type { WarehouseModel } from './model';
-import { routeOrder, type Route } from './routing';
+import { routeOrder, type Route, type RoutingPolicy } from './routing';
 import type { Order } from './types';
 
 // Time for one trip = walking + 10 s per line + 30 s packing per order.
@@ -30,7 +30,12 @@ export function groupIntoTrips(orders: Order[], size: number): Order[][] {
 }
 
 // Route one trip: visit the pick points of every line of every order in it.
-export function routeForTrip(model: WarehouseModel, slotOf: Map<string, number>, trip: Order[]): Route {
+export function routeForTrip(
+  model: WarehouseModel,
+  slotOf: Map<string, number>,
+  trip: Order[],
+  routing: RoutingPolicy = 'nn',
+): Route {
   const pickNodes = trip.flatMap((order) =>
     order.items.map((code) => {
       const slotId = slotOf.get(code);
@@ -38,7 +43,7 @@ export function routeForTrip(model: WarehouseModel, slotOf: Map<string, number>,
       return model.grid.slots[slotId].node;
     }),
   );
-  return routeOrder(model, pickNodes);
+  return routeOrder(model, pickNodes, routing);
 }
 
 export function routeForOrder(model: WarehouseModel, slotOf: Map<string, number>, order: Order): Route {
@@ -55,14 +60,20 @@ export type Score = {
   totalTimeS: number;
 };
 
-export function scoreLayout(model: WarehouseModel, layout: Layout, orders: Order[], batchSize = 1): Score {
+export function scoreLayout(
+  model: WarehouseModel,
+  layout: Layout,
+  orders: Order[],
+  batchSize = 1,
+  routing: RoutingPolicy = 'nn',
+): Score {
   const slotOf = slotOfProduct(layout);
   const trips = groupIntoTrips(orders, batchSize);
   let totalDistanceM = 0;
   let totalTimeS = 0;
   let lines = 0;
   for (const trip of trips) {
-    const route = routeForTrip(model, slotOf, trip);
+    const route = routeForTrip(model, slotOf, trip, routing);
     const tripLines = trip.reduce((n, o) => n + o.items.length, 0);
     totalDistanceM += route.distance;
     totalTimeS += tripTimeSeconds(route.distance, tripLines, trip.length);
