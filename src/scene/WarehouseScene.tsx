@@ -4,11 +4,13 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { useStore } from '../store';
+import { Building } from './Building';
 import { Floor } from './Floor';
 import { useHeatmaps, useMultiSim, useTimeline } from './helpers';
 import { MultiPickers } from './MultiPickers';
 import { Picker } from './Picker';
 import { Racks } from './Racks';
+import { SCENE } from './theme';
 import { TrafficHeatmap } from './TrafficHeatmap';
 
 export function WarehouseScene() {
@@ -27,21 +29,31 @@ export function WarehouseScene() {
       camera={{ position: CAMERA_DIR, fov: 45, near: 0.5, far: 200 }}
       onPointerMissed={() => useStore.getState().setHovered(null)}
     >
-      <color attach="background" args={['#0b0f17']} />
-      <ambientLight intensity={0.55} />
+      {/* Light theme: pale background that the fog fades into */}
+      <color attach="background" args={[SCENE.background]} />
+      <fog attach="fog" args={[SCENE.background, SCENE.fogNear, SCENE.fogFar]} />
+
+      {/* Soft sky light from above + bounce from the floor */}
+      <hemisphereLight args={[SCENE.skyLight, SCENE.groundLight, 1.1]} />
+      {/* The only shadow-casting light: a "sun" through the skylights */}
       <directionalLight
-        position={[-12, 25, 15]}
-        intensity={1.3}
+        position={[-14, 30, 18]}
+        intensity={1.9}
         castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={15}
-        shadow-camera-bottom={-15}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-22}
+        shadow-camera-right={22}
+        shadow-camera-top={18}
+        shadow-camera-bottom={-18}
+        shadow-camera-far={80}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
       />
 
       <FitCamera />
+      {import.meta.env.DEV && <DevExpose />}
       <Floor grid={model.grid} />
+      <Building grid={model.grid} />
       {heatmaps.current && heatmaps.reference && (
         <TrafficHeatmap grid={model.grid} heat={heatmaps.current} scaleMax={heatmaps.reference.maxCellPasses} />
       )}
@@ -73,5 +85,15 @@ function FitCamera() {
     camera.position.set(CAMERA_DIR[0] * scale, CAMERA_DIR[1] * scale, CAMERA_DIR[2] * scale);
     camera.lookAt(0, 0, 0);
   }, [camera, size.width, size.height]);
+  return null;
+}
+
+// Dev-only: expose the camera and renderer in the browser console for
+// debugging (e.g. renderer.info.render.calls = draw calls per frame).
+function DevExpose() {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    (window as unknown as { three: object }).three = { camera, gl };
+  }, [camera, gl]);
   return null;
 }

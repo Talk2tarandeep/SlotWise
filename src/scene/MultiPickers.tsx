@@ -3,14 +3,15 @@
 // between ticks so the movement looks smooth.
 
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import type { Group } from 'three';
 import { TICK_S, type MultiPickerResult } from '../sim/congestion';
 import type { Grid } from '../sim/grid';
 import { useStore } from '../store';
 import { toWorld } from './helpers';
+import { HumanPicker } from './HumanPicker';
 
-export const PICKER_COLORS = ['#4cc9f0', '#f72585', '#b5e48c', '#ffb703'];
+export const PICKER_COLORS = ['#f97316', '#2563eb', '#16a34a', '#db2777'];
 const COUNTER_UPDATE_S = 0.1;
 
 export function MultiPickers({ grid, sim }: { grid: Grid; sim: MultiPickerResult }) {
@@ -62,10 +63,17 @@ export function MultiPickers({ grid, sim }: { grid: Grid; sim: MultiPickerResult
     <group>
       {frames.map((_, p) => (
         <group key={p} ref={(g) => (refs.current[p] = g)}>
-          <mesh position={[0, 0.85, 0]} castShadow>
-            <capsuleGeometry args={[0.28, 0.9, 4, 12]} />
-            <meshStandardMaterial color="#f8f9fa" emissive={PICKER_COLORS[p % PICKER_COLORS.length]} emissiveIntensity={0.6} />
-          </mesh>
+          {/* Show the old capsule while the (large) FBX model downloads */}
+          <Suspense
+            fallback={
+              <mesh position={[0, 0.85, 0]} castShadow>
+                <capsuleGeometry args={[0.28, 0.9, 4, 12]} />
+                <meshStandardMaterial color={PICKER_COLORS[p % PICKER_COLORS.length]} />
+              </mesh>
+            }
+          >
+            <HumanPicker color={PICKER_COLORS[p % PICKER_COLORS.length]} />
+          </Suspense>
           <mesh rotation-x={-Math.PI / 2} position={[0, 0.02, 0]}>
             <circleGeometry args={[0.45, 24]} />
             <meshBasicMaterial color={PICKER_COLORS[p % PICKER_COLORS.length]} transparent opacity={0.5} />

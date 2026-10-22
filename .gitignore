@@ -10,3 +10,7 @@ node_modules/
 dist/
 .venv/
 __pycache__/
+
+# large source models (not shipped)
+_to_delete/
+*.fbx

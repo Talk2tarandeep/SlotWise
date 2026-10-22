@@ -12,7 +12,7 @@ import { heatColor, toWorld } from './helpers';
 
 const BOX_SIZE = 0.8;
 const BOX_Y = 0.5; // centre height of a product box (sits on the bottom shelf)
-const EMPTY_COLOR = new Color('#2a3342');
+const EMPTY_COLOR = new Color('#cfd5dc');
 
 type Props = { grid: Grid; layout: Layout; products: Product[] };
 
@@ -89,7 +89,7 @@ export function Racks({ grid, layout, products }: Props) {
       {selectedSlot && (
         <mesh position={[selX, BOX_Y, selZ]}>
           <boxGeometry args={[1.0, 1.0, 1.0]} />
-          <meshBasicMaterial color="#4cc9f0" wireframe />
+          <meshBasicMaterial color="#2563eb" wireframe />
         </mesh>
       )}
 
@@ -149,19 +149,19 @@ function RackFrames({ grid }: { grid: Grid }) {
         <group key={i} position={[x, 0, z]}>
           <mesh position={[0, 0.05, 0]}>
             <boxGeometry args={[0.95, 0.1, len]} />
-            <meshStandardMaterial color="#3a4556" />
+            <meshStandardMaterial color="#8b96a3" />
           </mesh>
           {/* Thin top rails (not a solid shelf) so the products stay visible from above */}
           {[-0.44, 0.44].map((dx) => (
             <mesh key={dx} position={[dx, 1.15, 0]}>
               <boxGeometry args={[0.06, 0.06, len]} />
-              <meshStandardMaterial color="#56647a" />
+              <meshStandardMaterial color="#6b7785" />
             </mesh>
           ))}
           {[-len / 2, 0, len / 2].map((dz) => (
             <mesh key={dz} position={[0, 0.6, dz]}>
               <boxGeometry args={[0.08, 1.2, 0.08]} />
-              <meshStandardMaterial color="#56647a" />
+              <meshStandardMaterial color="#6b7785" />
             </mesh>
           ))}
         </group>

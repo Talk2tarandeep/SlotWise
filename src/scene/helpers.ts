@@ -69,11 +69,11 @@ export function useHeatmaps() {
   };
 }
 
-// Traffic colour: dark blue (quiet) -> yellow -> red (busiest).
+// Traffic colour: pale blue (quiet) -> yellow -> red (busiest).
 // sqrt scale so quieter cells are still visible next to the dock hot spot.
 export function trafficColor(passes: number, max: number): Color {
   const t = Math.min(1, Math.sqrt(passes / Math.max(1, max)));
-  return new Color().setHSL(0.66 - 0.66 * t, 0.9, 0.18 + 0.37 * t);
+  return new Color().setHSL(0.6 - 0.6 * t, 0.85, 0.86 - 0.38 * t);
 }
 
 // Multi-picker replay of the current sample (only when more than 1 picker).
