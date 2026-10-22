@@ -20,6 +20,9 @@ export function Racks({ grid, layout, products }: Props) {
   const meshRef = useRef<InstancedMesh>(null);
   const setHovered = useStore((s) => s.setHovered);
   const hovered = useStore((s) => s.hovered);
+  const selected = useStore((s) => s.selected);
+  const swapMode = useStore((s) => s.active === 'player');
+  const clickSlot = useStore((s) => s.clickSlot);
 
   const productByCode = useMemo(() => new Map(products.map((p) => [p.code, p])), [products]);
   const [minPicks, maxPicks] = useMemo(() => {
@@ -55,6 +58,8 @@ export function Racks({ grid, layout, products }: Props) {
   const hoveredSlot = hovered !== null ? grid.slots[hovered] : null;
   const hoveredProduct = hoveredSlot && layout[hoveredSlot.id] ? productByCode.get(layout[hoveredSlot.id]!) : undefined;
   const [tipX, tipZ] = hoveredSlot ? toWorld(grid, hoveredSlot.rackCell.x, hoveredSlot.rackCell.y) : [0, 0];
+  const selectedSlot = selected !== null ? grid.slots[selected] : null;
+  const [selX, selZ] = selectedSlot ? toWorld(grid, selectedSlot.rackCell.x, selectedSlot.rackCell.y) : [0, 0];
 
   return (
     <group>
@@ -67,6 +72,12 @@ export function Racks({ grid, layout, products }: Props) {
           if (e.instanceId !== undefined) setHovered(e.instanceId);
         }}
         onPointerOut={() => setHovered(null)}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Ignore clicks that were really camera drags (pointer moved > 4 px).
+          if (e.delta > 4 || e.instanceId === undefined) return;
+          clickSlot(e.instanceId);
+        }}
       >
         <boxGeometry args={[BOX_SIZE, BOX_SIZE, BOX_SIZE]} />
         <meshStandardMaterial />
@@ -74,12 +85,20 @@ export function Racks({ grid, layout, products }: Props) {
 
       <RackFrames grid={grid} />
 
+      {/* Selected slot (waiting for the second click): glowing wire cage */}
+      {selectedSlot && (
+        <mesh position={[selX, BOX_Y, selZ]}>
+          <boxGeometry args={[1.0, 1.0, 1.0]} />
+          <meshBasicMaterial color="#4cc9f0" wireframe />
+        </mesh>
+      )}
+
       {hoveredSlot && (
         <Html
           position={[tipX, 1.6, tipZ]}
           center
           className="tooltip"
-          style={{ pointerEvents: 'none' }}
+          pointerEvents="none" // never block clicks on the boxes underneath
         >
           <div className="tooltip-title">
             Slot A{hoveredSlot.aisle + 1}-{hoveredSlot.side}
@@ -96,6 +115,11 @@ export function Racks({ grid, layout, products }: Props) {
             </>
           ) : (
             <div>Empty slot</div>
+          )}
+          {swapMode && (
+            <div className="tooltip-hint">
+              {selected === null ? 'Click to pick up' : selected === hoveredSlot.id ? 'Click to cancel' : 'Click to swap here'}
+            </div>
           )}
         </Html>
       )}

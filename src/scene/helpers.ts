@@ -3,6 +3,10 @@
 import { useMemo } from 'react';
 import { Color } from 'three';
 import type { Grid } from '../sim/grid';
+import { buildHeatmap, type Heatmap } from '../sim/heatmap';
+import type { Layout } from '../sim/layouts';
+import type { WarehouseModel } from '../sim/model';
+import type { Order } from '../sim/types';
 import { buildTimeline } from '../sim/timeline';
 import { SAMPLE_SIZE, useStore } from '../store';
 
@@ -28,4 +32,40 @@ export function useTimeline() {
     if (!model || !data) return null;
     return buildTimeline(model, layout, data.orders.slice(sampleStart, sampleStart + SAMPLE_SIZE));
   }, [model, data, layout, sampleStart]);
+}
+
+// Traffic heatmap for the active layout over ALL orders, plus the Original
+// layout's heatmap, whose busiest cell fixes the colour scale so the
+// layouts can be compared by eye. Only computed while the overlay is on.
+// Layout arrays are never mutated (a swap makes a new array), so each
+// layout's heatmap is computed once and cached.
+const heatmapCache = new WeakMap<Layout, Heatmap>();
+
+function cachedHeatmap(model: WarehouseModel, layout: Layout, orders: Order[]): Heatmap {
+  let heat = heatmapCache.get(layout);
+  if (!heat) {
+    heat = buildHeatmap(model, layout, orders);
+    heatmapCache.set(layout, heat);
+  }
+  return heat;
+}
+
+export function useHeatmaps() {
+  const model = useStore((s) => s.model);
+  const data = useStore((s) => s.data);
+  const show = useStore((s) => s.showHeatmap);
+  const original = useStore((s) => s.layouts.original);
+  const layout = useStore((s) => s.layouts[s.active]);
+  if (!show || !model || !data) return { current: null, reference: null };
+  return {
+    current: cachedHeatmap(model, layout, data.orders),
+    reference: cachedHeatmap(model, original, data.orders),
+  };
+}
+
+// Traffic colour: dark blue (quiet) -> yellow -> red (busiest).
+// sqrt scale so quieter cells are still visible next to the dock hot spot.
+export function trafficColor(passes: number, max: number): Color {
+  const t = Math.min(1, Math.sqrt(passes / Math.max(1, max)));
+  return new Color().setHSL(0.66 - 0.66 * t, 0.9, 0.18 + 0.37 * t);
 }

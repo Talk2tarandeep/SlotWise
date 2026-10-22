@@ -5,15 +5,17 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { useStore } from '../store';
 import { Floor } from './Floor';
-import { useTimeline } from './helpers';
+import { useHeatmaps, useTimeline } from './helpers';
 import { Picker } from './Picker';
 import { Racks } from './Racks';
+import { TrafficHeatmap } from './TrafficHeatmap';
 
 export function WarehouseScene() {
   const model = useStore((s) => s.model);
   const data = useStore((s) => s.data);
   const layout = useStore((s) => s.layouts[s.active]);
   const timeline = useTimeline();
+  const heatmaps = useHeatmaps();
   if (!model || !data || !timeline) return null;
 
   return (
@@ -38,6 +40,9 @@ export function WarehouseScene() {
 
       <FitCamera />
       <Floor grid={model.grid} />
+      {heatmaps.current && heatmaps.reference && (
+        <TrafficHeatmap grid={model.grid} heat={heatmaps.current} scaleMax={heatmaps.reference.maxCellPasses} />
+      )}
       <Racks grid={model.grid} layout={layout} products={data.products} />
       <Picker model={model} timeline={timeline} />
 

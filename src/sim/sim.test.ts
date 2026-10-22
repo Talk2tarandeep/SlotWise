@@ -120,3 +120,27 @@ describe('(c) tiny hand-checkable warehouse', () => {
     expect(layout[2]).toBe('SLOW');
   });
 });
+
+describe('swap game', () => {
+  const products: Product[] = Array.from({ length: 100 }, (_, i) => ({ code: String(10000 + i), desc: '', picks: 100 - i, rank: i + 1 }));
+  const orders = [
+    { id: '1', t: '', items: ['10000', '10050', '10099'] },
+    { id: '2', t: '', items: ['10001', '10002'] },
+  ];
+  const original = originalLayout(products, grid.slots.length);
+
+  it('swapping two slots and swapping back restores the exact score', () => {
+    const before = scoreLayout(model, original, orders);
+    const swapped = swapSlots(original, 0, 99);
+    const restored = swapSlots(swapped, 0, 99);
+    expect(scoreLayout(model, restored, orders)).toEqual(before);
+    expect(swapped).not.toBe(original); // swap returns a new array, original untouched
+    expect(original[0]).toBe('10000');
+  });
+
+  it('moving a product into an empty slot keeps every product placed exactly once', () => {
+    const moved = swapSlots(original, 0, 119); // slot 119 is empty
+    expect(moved[0]).toBeNull();
+    expect(moved.filter((c) => c !== null).length).toBe(100);
+  });
+});
