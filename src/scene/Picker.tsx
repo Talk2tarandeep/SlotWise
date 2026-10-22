@@ -42,7 +42,7 @@ export function Picker({ model, timeline }: { model: WarehouseModel; timeline: T
     const finished = playing && clock.current >= timeline.duration;
     if (sinceUpdate.current >= COUNTER_UPDATE_S || finished) {
       sinceUpdate.current = 0;
-      setLive({ distance: s.distance, elapsed: clock.current, ordersDone: s.ordersDone, tripIdx: s.tripIdx });
+      setLive({ distance: s.distance, elapsed: clock.current, ordersDone: s.ordersDone, tripIdx: s.tripIdx, waitS: 0 });
       if (s.tripIdx !== tripIdx) setTripIdx(s.tripIdx);
     }
     if (finished) setPlaying(false);

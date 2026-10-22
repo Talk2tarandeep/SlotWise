@@ -116,3 +116,8 @@ input.text:focus { outline: none; border-color: var(--accent); }
 .board td.actions { white-space: nowrap; }
 .board td:nth-child(2) { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .board th:nth-child(2) { text-align: left; }
+
+/* Phase 5d: multiple pickers */
+.row.labelled { align-items: center; margin-top: 8px; }
+.counters .value.warn { color: var(--warn); }
+.counters { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }

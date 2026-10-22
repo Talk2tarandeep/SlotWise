@@ -19,7 +19,9 @@ export const LAYOUT_NAMES: Record<LayoutKey, string> = {
 export const SAMPLE_SIZE = 20; // orders shown in one animated replay
 export const SPEEDS = [1, 5, 20, 60];
 
-export type LiveCounters = { distance: number; elapsed: number; ordersDone: number; tripIdx: number };
+export type LiveCounters = { distance: number; elapsed: number; ordersDone: number; tripIdx: number; waitS: number };
+
+export const PICKER_COUNTS = [1, 2, 3, 4];
 
 // Picking mode: one order per trip, or BATCH_SIZE orders per trip.
 export type PickingMode = 'single' | 'batch';
@@ -39,6 +41,7 @@ type State = {
   scores: LayoutScores | null; // all orders of the month, single-order picking
   batchScores: LayoutScores | null; // same, batch picking
   mode: PickingMode;
+  pickers: number; // pickers working at once (1 = no congestion)
   active: LayoutKey;
 
   sampleStart: number; // index of the first order in the replay sample
@@ -57,6 +60,7 @@ type State = {
   setActive: (key: LayoutKey) => void;
   setSpeed: (speed: number) => void;
   setMode: (mode: PickingMode) => void;
+  setPickers: (pickers: number) => void;
   setPlaying: (playing: boolean) => void;
   replay: () => void;
   setSampleStart: (index: number) => void;
@@ -69,7 +73,7 @@ type State = {
   loadPlayerLayout: (layout: Layout) => void;
 };
 
-const ZERO: LiveCounters = { distance: 0, elapsed: 0, ordersDone: 0, tripIdx: 0 };
+const ZERO: LiveCounters = { distance: 0, elapsed: 0, ordersDone: 0, tripIdx: 0, waitS: 0 };
 
 export const useStore = create<State>((set, get) => ({
   data: null,
@@ -78,6 +82,7 @@ export const useStore = create<State>((set, get) => ({
   scores: null,
   batchScores: null,
   mode: 'single',
+  pickers: 1,
   active: 'original',
   sampleStart: 0,
   speed: 20,
@@ -109,6 +114,7 @@ export const useStore = create<State>((set, get) => ({
   setActive: (active) => set({ active, selected: null, playing: false, replayId: get().replayId + 1, live: ZERO }),
   setSpeed: (speed) => set({ speed }),
   setMode: (mode) => set({ mode, playing: false, replayId: get().replayId + 1, live: ZERO }),
+  setPickers: (pickers) => set({ pickers, playing: false, replayId: get().replayId + 1, live: ZERO }),
   setPlaying: (playing) => set({ playing }),
   replay: () => set({ playing: true, replayId: get().replayId + 1, live: ZERO }),
   setSampleStart: (index) => {

@@ -7,6 +7,7 @@ import { buildHeatmap, type Heatmap } from '../sim/heatmap';
 import type { Layout } from '../sim/layouts';
 import type { WarehouseModel } from '../sim/model';
 import type { Order } from '../sim/types';
+import { simulatePickers, type MultiPickerResult } from '../sim/congestion';
 import { buildTimeline } from '../sim/timeline';
 import { batchSizeFor, SAMPLE_SIZE, useStore } from '../store';
 
@@ -73,4 +74,41 @@ export function useHeatmaps() {
 export function trafficColor(passes: number, max: number): Color {
   const t = Math.min(1, Math.sqrt(passes / Math.max(1, max)));
   return new Color().setHSL(0.66 - 0.66 * t, 0.9, 0.18 + 0.37 * t);
+}
+
+// Multi-picker replay of the current sample (only when more than 1 picker).
+export function useMultiSim() {
+  const model = useStore((s) => s.model);
+  const data = useStore((s) => s.data);
+  const layout = useStore((s) => s.layouts[s.active]);
+  const sampleStart = useStore((s) => s.sampleStart);
+  const batchSize = useStore((s) => batchSizeFor(s.mode));
+  const pickers = useStore((s) => s.pickers);
+  if (!model || !data || pickers < 2) return null;
+  const key = `${sampleStart}|${pickers}x${batchSize}`;
+  if (!sampleSimCache.has(key)) sampleSimCache.set(key, new WeakMap());
+  const cache = sampleSimCache.get(key)!;
+  let sim = cache.get(layout);
+  if (!sim) {
+    const sample = data.orders.slice(sampleStart, sampleStart + SAMPLE_SIZE);
+    sim = simulatePickers(model, layout, sample, { pickers, batchSize, record: true });
+    cache.set(layout, sim);
+  }
+  return sim;
+}
+const sampleSimCache = new Map<string, WeakMap<Layout, MultiPickerResult>>();
+
+// Congestion results over ALL orders for one layout, cached per settings.
+const congestionCache = new Map<string, WeakMap<Layout, MultiPickerResult>>();
+
+export function congestionFor(model: WarehouseModel, layout: Layout, orders: Order[], pickers: number, batchSize: number) {
+  const key = `${pickers}x${batchSize}`;
+  if (!congestionCache.has(key)) congestionCache.set(key, new WeakMap());
+  const cache = congestionCache.get(key)!;
+  let result = cache.get(layout);
+  if (!result) {
+    result = simulatePickers(model, layout, orders, { pickers, batchSize });
+    cache.set(layout, result);
+  }
+  return result;
 }

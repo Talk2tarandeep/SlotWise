@@ -5,7 +5,8 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { useStore } from '../store';
 import { Floor } from './Floor';
-import { useHeatmaps, useTimeline } from './helpers';
+import { useHeatmaps, useMultiSim, useTimeline } from './helpers';
+import { MultiPickers } from './MultiPickers';
 import { Picker } from './Picker';
 import { Racks } from './Racks';
 import { TrafficHeatmap } from './TrafficHeatmap';
@@ -16,6 +17,7 @@ export function WarehouseScene() {
   const layout = useStore((s) => s.layouts[s.active]);
   const timeline = useTimeline();
   const heatmaps = useHeatmaps();
+  const multiSim = useMultiSim();
   if (!model || !data || !timeline) return null;
 
   return (
@@ -44,7 +46,7 @@ export function WarehouseScene() {
         <TrafficHeatmap grid={model.grid} heat={heatmaps.current} scaleMax={heatmaps.reference.maxCellPasses} />
       )}
       <Racks grid={model.grid} layout={layout} products={data.products} />
-      <Picker model={model} timeline={timeline} />
+      {multiSim ? <MultiPickers grid={model.grid} sim={multiSim} /> : <Picker model={model} timeline={timeline} />}
 
       {/* Orbit but never below the floor; zoom limits keep the floor in view */}
       <OrbitControls target={[0, 0, 0]} maxPolarAngle={Math.PI / 2.3} minDistance={8} maxDistance={60} enableDamping />

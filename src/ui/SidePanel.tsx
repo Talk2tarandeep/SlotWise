@@ -1,8 +1,10 @@
 // Control-room side panel: layout selector + swap game, results, replay
 // controls, live counters and heat legend.
 
-import { useHeatmaps, useTimeline } from '../scene/helpers';
-import { LAYOUT_NAMES, SAMPLE_SIZE, SPEEDS, useStore, type LayoutKey } from '../store';
+import { useHeatmaps, useMultiSim, useTimeline } from '../scene/helpers';
+import { TICK_S } from '../sim/congestion';
+import { LAYOUT_NAMES, PICKER_COUNTS, SAMPLE_SIZE, SPEEDS, useStore, type LayoutKey } from '../store';
+import { CongestionCard } from './CongestionCard';
 import { Leaderboard } from './Leaderboard';
 import { ResultsCard } from './ResultsCard';
 
@@ -21,11 +23,14 @@ export function SidePanel() {
   const playing = useStore((s) => s.playing);
   const live = useStore((s) => s.live);
   const sampleStart = useStore((s) => s.sampleStart);
-  const { setActive, setSpeed, setPlaying, replay, setSampleStart } = useStore.getState();
+  const pickers = useStore((s) => s.pickers);
+  const { setActive, setSpeed, setPlaying, replay, setSampleStart, setPickers } = useStore.getState();
   const timeline = useTimeline();
+  const multiSim = useMultiSim();
 
   const sampleEnd = Math.min(data.orders.length, sampleStart + SAMPLE_SIZE);
-  const trip = timeline?.trips[live.tripIdx];
+  const trip = multiSim ? undefined : timeline?.trips[live.tripIdx];
+  const replayDuration = multiSim ? multiSim.ticks * TICK_S : (timeline?.duration ?? 0);
 
   return (
     <aside className="panel">
@@ -49,6 +54,7 @@ export function SidePanel() {
       </section>
 
       <ResultsCard />
+      <CongestionCard />
       <Leaderboard />
 
       <section>
@@ -60,7 +66,7 @@ export function SidePanel() {
           <button className="primary" onClick={replay}>
             ▶ Replay
           </button>
-          <button onClick={() => setPlaying(!playing)} disabled={!timeline || live.elapsed >= timeline.duration}>
+          <button onClick={() => setPlaying(!playing)} disabled={!timeline || live.elapsed >= replayDuration}>
             {playing ? 'Pause' : 'Resume'}
           </button>
           <button onClick={() => setSampleStart(sampleStart + SAMPLE_SIZE)} disabled={sampleEnd >= data.orders.length}>
@@ -73,6 +79,16 @@ export function SidePanel() {
               {s}x
             </button>
           ))}
+        </div>
+        <div className="row labelled">
+          <span className="muted">Pickers</span>
+          <div className="segmented small" style={{ flex: 1 }}>
+            {PICKER_COUNTS.map((n) => (
+              <button key={n} className={n === pickers ? 'on' : ''} onClick={() => setPickers(n)}>
+                {n}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -93,6 +109,12 @@ export function SidePanel() {
             </span>
             <span className="unit">orders done</span>
           </div>
+          {multiSim && (
+            <div>
+              <span className="value warn">{formatTime(live.waitS)}</span>
+              <span className="unit">waiting (all pickers)</span>
+            </div>
+          )}
         </div>
         {trip && (
           <p className="muted">
@@ -101,10 +123,17 @@ export function SidePanel() {
               : `Current trip: ${trip.length} orders (#${trip.map((o) => o.id).join(', #')}) · ${trip.reduce((n, o) => n + o.items.length, 0)} lines`}
           </p>
         )}
-        {timeline && (
+        {multiSim ? (
           <p className="muted">
-            This sample in total: {timeline.totalDistance.toFixed(0)} m, {formatTime(timeline.duration)}
+            This sample with {multiSim.pickers} pickers: {multiSim.totalDistanceM.toFixed(0)} m, done in {formatTime(replayDuration)}, {formatTime(multiSim.totalWaitS)}{' '}
+            spent waiting in aisles
           </p>
+        ) : (
+          timeline && (
+            <p className="muted">
+              This sample in total: {timeline.totalDistance.toFixed(0)} m, {formatTime(timeline.duration)}
+            </p>
+          )
         )}
       </section>
 
