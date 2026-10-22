@@ -91,23 +91,3 @@ describe('routing and dispatch policies', () => {
     expect(slow.makespanS).toBeGreaterThan(normal.makespanS);
   });
 });
-
-describe('what-if workloads', () => {
-  it('scaling volume keeps or repeats real orders', async () => {
-    const { scaleVolume } = await import('./analysis');
-    expect(scaleVolume(data.orders, 1)).toHaveLength(data.orders.length);
-    expect(scaleVolume(data.orders, 2)).toHaveLength(2 * data.orders.length);
-    expect(scaleVolume(data.orders, 0.5)).toHaveLength(Math.ceil(data.orders.length / 2));
-  });
-
-  it('reshaped demand is repeatable and keeps order sizes and distinct items', async () => {
-    const { reshapeDemand } = await import('./analysis');
-    const a = reshapeDemand(small, data.products, 0, 7);
-    const b = reshapeDemand(small, data.products, 0, 7);
-    expect(a).toEqual(b);
-    a.forEach((o, i) => {
-      expect(o.items).toHaveLength(small[i].items.length);
-      expect(new Set(o.items).size).toBe(o.items.length);
-    });
-  });
-});

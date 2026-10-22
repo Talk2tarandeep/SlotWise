@@ -35,7 +35,7 @@ export type LayoutScores = Record<Exclude<LayoutKey, 'optimized'>, Score> & { op
 // Floor overlay in the 3D view.
 export type Overlay = 'none' | 'traffic' | 'congestion';
 export type CameraPreset = 'overview' | 'top' | 'follow';
-export type PanelTab = 'dashboard' | 'optimize' | 'game' | 'whatif';
+export type PanelTab = 'dashboard' | 'optimize' | 'game';
 // What the user clicked on in the 3D view.
 export type Inspect =
   | { kind: 'picker'; id: number }

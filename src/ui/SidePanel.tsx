@@ -1,20 +1,17 @@
-// Right-hand panel: a header and four tabs.
+// Right-hand panel: a header and three tabs.
 //   Dashboard - scenario, live KPIs, selected picker, events, whole-month results
 //   Optimize  - layout optimizer, held-out before/after, SKU moves, policies
 //   Game      - swap game, points, active orders, challenges, leaderboard
-//   What-if   - build and compare scenarios
 
 import { useStore, type PanelTab } from '../store';
 import { Dashboard } from './Dashboard';
 import { GamePanel } from './GamePanel';
 import { OptimizePanel } from './OptimizePanel';
-import { WhatIf } from './WhatIf';
 
 const TABS: [PanelTab, string][] = [
   ['dashboard', 'Dashboard'],
   ['optimize', 'Optimize'],
   ['game', 'Game'],
-  ['whatif', 'What-if'],
 ];
 
 export function SidePanel() {
@@ -43,7 +40,6 @@ export function SidePanel() {
         {tab === 'dashboard' && <Dashboard />}
         {tab === 'optimize' && <OptimizePanel />}
         {tab === 'game' && <GamePanel />}
-        {tab === 'whatif' && <WhatIf />}
       </div>
     </aside>
   );
